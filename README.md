@@ -5,7 +5,7 @@ Application web locale de gestion de tournois e-sport, réalisée pour la missio
 ## Fonctionnalités
 
 - Création de compte, connexion et déconnexion des utilisateurs.
-- Consultation des tournois à venir et passés.
+- Consultation des tournois à venir, en cours et passés.
 - Inscription aux tournois pendant la période prévue, dans la limite des places disponibles.
 - Espace d'administration pour créer, modifier et supprimer des utilisateurs et des tournois.
 
@@ -58,9 +58,79 @@ Application web locale de gestion de tournois e-sport, réalisée pour la missio
 
 ## Schémas et base de données
 
-- [Schéma de la base de données](docs/schema-bdd.drawio)
-- [Schéma du parcours du site](docs/schema-site.drawio)
+### Base de données
+
+```mermaid
+erDiagram
+    users ||--o{ tournois_participants : "s'inscrit"
+    tournois ||--o{ tournois_participants : "reçoit"
+    users |o--o{ tournois : "crée"
+
+    users {
+        int id PK
+        varchar(50) username UK
+        varchar(100) email UK
+        varchar(255) password "haché"
+        timestamp created_at
+        int permission "1 utilisateur, 2 administrateur"
+    }
+
+    tournois {
+        int id PK
+        varchar(100) nom
+        varchar(100) jeu
+        text description
+        text regles
+        datetime date_debut
+        int capacite_max
+        datetime inscription_debut
+        datetime inscription_fin
+        varchar(20) statut "a_venir, termine ou annule"
+        int created_by FK
+        timestamp created_at
+    }
+
+    tournois_participants {
+        int tournoi_id PK, FK
+        int user_id PK, FK
+        timestamp inscrit_le
+    }
+```
+
+### Parcours du site
+
+```mermaid
+flowchart TD
+    visiteur([Visiteur]) --> accueil["Accueil (index.php)<br/>tournois à venir, en cours et passés"]
+
+    accueil -->|Créer un compte| inscription["Inscription (register.php)"]
+    inscription -->|erreur : message| inscription
+    inscription -->|compte créé| connexion["Connexion (login.php)"]
+
+    accueil -->|Se connecter| connexion
+    connexion -->|identifiants invalides : message,<br/>blocage après 5 échecs| connexion
+    connexion -->|identifiants valides| dashboard["Tableau de bord (dashboard.php)"]
+
+    dashboard --> navigation{Menu du<br/>compte connecté}
+    navigation -->|Menu| accueil
+    navigation -->|si administrateur| admin["Administration (admin.php)"]
+    navigation -->|Se déconnecter| deconnexion["Déconnexion (logout.php)"]
+    deconnexion --> connexion
+
+    accueil -->|Rejoindre, si connecté| rejoindre["S'inscrire à un tournoi<br/>(actions/tournament_join.php)"]
+    rejoindre -->|message de résultat| accueil
+
+    admin --> crudUsers["Gérer les utilisateurs<br/>créer, modifier, supprimer<br/>(actions/admin/user_*)"]
+    admin --> crudTournois["Gérer les tournois<br/>créer, modifier, supprimer<br/>(actions/admin/tournament_*)"]
+    crudUsers -->|message de résultat| admin
+    crudTournois -->|message de résultat| admin
+```
+
+### Fichiers
+
 - [Export SQL de la structure](database/cybergames-db_2026-10-15.sql)
+- Schéma de la base de données au format Draw.io : [source](docs/schema-bdd.drawio), [image](docs/schema-bdd.png)
+- Schéma du parcours du site au format Draw.io : [source](docs/schema-site.drawio), [image](docs/schema-site.png)
 
 Les schémas Draw.io peuvent être ouverts et modifiés sur [diagrams.net](https://app.diagrams.net/).
 
@@ -78,4 +148,5 @@ index.PHP      Accueil et consultation des tournois
 login.PHP      Connexion
 logout.PHP     Déconnexion
 register.PHP   Création de compte
+.htaccess      Blocage de l'accès direct aux fichiers internes
 ```
