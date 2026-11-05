@@ -4,6 +4,8 @@ require_once __DIR__ . '/includes/csrf.php';
 require_once __DIR__ . '/includes/tournaments.php';
 requireAdmin(); // bloque si l'user est pas admin
 
+$flash = pullFlashMessage();
+
 $users = $pdo->query("SELECT id, username, email, permission FROM users")->fetchAll(PDO::FETCH_ASSOC);
 $tournaments = $pdo->query(
     'SELECT t.id, t.nom, t.jeu, t.description, t.regles, t.date_debut, t.capacite_max,
@@ -74,9 +76,9 @@ require __DIR__ . '/includes/header.php';
 
   <section id="crud-users" class="panel">
     <h2>CRUD Utilisateurs</h2>
-    <?php if (isset($_GET['status'])): ?>
-      <p class="admin-message <?= $_GET['status'] === 'error' ? 'error' : 'success' ?>">
-        <?= htmlspecialchars($_GET['message'] ?? '', ENT_QUOTES, 'UTF-8') ?>
+    <?php if ($flash !== null): ?>
+      <p class="admin-message <?= $flash['status'] === 'error' ? 'error' : 'success' ?>" role="status">
+        <?= htmlspecialchars($flash['message'], ENT_QUOTES, 'UTF-8') ?>
       </p>
     <?php endif; ?>
     
@@ -84,6 +86,7 @@ require __DIR__ . '/includes/header.php';
     <div class="crud-grid">
       <form method="post" action="actions/admin/user_create.php" class="crud-form">
         <h3>Créer un utilisateur</h3>
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
         <label for="create-username">Nom d'utilisateur</label>
         <input id="create-username" name="username" type="text" minlength="3" maxlength="50" required>
         <label for="create-email">Email</label>
@@ -102,6 +105,7 @@ require __DIR__ . '/includes/header.php';
       <?php if ($editUser !== null): ?>
         <form method="post" action="actions/admin/user_update.php" class="crud-form">
           <h3>Modifier un utilisateur</h3>
+          <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
           <input type="hidden" name="id" value="<?= (int) $editUser['id'] ?>">
           <label for="edit-username">Nom d'utilisateur</label>
           <input id="edit-username" name="username" type="text" value="<?= htmlspecialchars($editUser['username'], ENT_QUOTES, 'UTF-8') ?>" minlength="3" maxlength="50" required>
@@ -147,6 +151,7 @@ require __DIR__ . '/includes/header.php';
                     && (int) $u['permission'] !== 2
                 ): ?>
                   <form method="post" action="actions/admin/user_delete.php" onsubmit="return confirm('Supprimer cet utilisateur ?');">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
                     <input type="hidden" name="id" value="<?= (int) $u['id'] ?>">
                     <button class="delete-button" type="submit">Supprimer</button>
                   </form>
@@ -164,9 +169,9 @@ require __DIR__ . '/includes/header.php';
 
   <section id="crud-tournois" class="panel">
     <h2>CRUD Tournois</h2>
-    <?php if (isset($_GET['status'], $_GET['message'])): ?>
-      <p class="admin-message <?= $_GET['status'] === 'error' ? 'error' : 'success' ?>" role="status">
-        <?= htmlspecialchars($_GET['message'], ENT_QUOTES, 'UTF-8') ?>
+    <?php if ($flash !== null): ?>
+      <p class="admin-message <?= $flash['status'] === 'error' ? 'error' : 'success' ?>" role="status">
+        <?= htmlspecialchars($flash['message'], ENT_QUOTES, 'UTF-8') ?>
       </p>
     <?php endif; ?>
 
@@ -189,7 +194,7 @@ require __DIR__ . '/includes/header.php';
         <label for="create-registration-end">Clôture des inscriptions</label>
         <input id="create-registration-end" name="inscription_fin" type="datetime-local" required>
         <label for="create-tournament-capacity">Capacité maximale</label>
-        <input id="create-tournament-capacity" name="capacite_max" type="number" min="1" max="100000" required>
+        <input id="create-tournament-capacity" name="capacite_max" type="number" min="1" max="64" required>
         <button type="submit">Créer le tournoi</button>
       </form>
 
@@ -213,7 +218,13 @@ require __DIR__ . '/includes/header.php';
           <label for="edit-registration-end">Clôture des inscriptions</label>
           <input id="edit-registration-end" name="inscription_fin" type="datetime-local" value="<?= htmlspecialchars(formatTournamentDate($editTournament['inscription_fin'], 'Y-m-d\TH:i'), ENT_QUOTES, 'UTF-8') ?>" required>
           <label for="edit-tournament-capacity">Capacité maximale</label>
-          <input id="edit-tournament-capacity" name="capacite_max" type="number" min="1" max="100000" value="<?= (int) $editTournament['capacite_max'] ?>" required>
+          <input id="edit-tournament-capacity" name="capacite_max" type="number" min="1" max="64" value="<?= (int) $editTournament['capacite_max'] ?>" required>
+          <label for="edit-tournament-status">Statut</label>
+          <select id="edit-tournament-status" name="statut">
+            <?php foreach (tournamentStatuses() as $statusValue => $statusLabel): ?>
+              <option value="<?= htmlspecialchars($statusValue, ENT_QUOTES, 'UTF-8') ?>" <?= $editTournament['statut'] === $statusValue ? 'selected' : '' ?>><?= htmlspecialchars($statusLabel, ENT_QUOTES, 'UTF-8') ?></option>
+            <?php endforeach; ?>
+          </select>
           <button type="submit">Enregistrer les modifications</button>
           <a class="cancel-link" href="admin.php#crud-tournois">Annuler</a>
         </form>
@@ -223,10 +234,10 @@ require __DIR__ . '/includes/header.php';
     <h3>Tournois existants</h3>
     <div class="table-wrapper">
       <table>
-        <thead><tr><th>Tournoi</th><th>Jeu</th><th>Dates</th><th>Participants</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Tournoi</th><th>Jeu</th><th>Dates</th><th>Statut</th><th>Participants</th><th>Actions</th></tr></thead>
         <tbody>
           <?php if ($tournaments === []): ?>
-            <tr><td colspan="5">Aucun tournoi créé.</td></tr>
+            <tr><td colspan="6">Aucun tournoi créé.</td></tr>
           <?php endif; ?>
           <?php foreach ($tournaments as $tournament): ?>
             <tr>
@@ -237,6 +248,7 @@ require __DIR__ . '/includes/header.php';
                 Inscriptions : <?= htmlspecialchars(formatTournamentDate($tournament['inscription_debut'], 'd/m/Y H:i'), ENT_QUOTES, 'UTF-8') ?>
                 – <?= htmlspecialchars(formatTournamentDate($tournament['inscription_fin'], 'd/m/Y H:i'), ENT_QUOTES, 'UTF-8') ?>
               </td>
+              <td><?= htmlspecialchars(tournamentStatuses()[$tournament['statut']] ?? $tournament['statut'], ENT_QUOTES, 'UTF-8') ?></td>
               <td><?= (int) $tournament['participant_count'] ?> / <?= (int) $tournament['capacite_max'] ?></td>
               <td class="actions">
                 <a class="button-link" href="admin.php?edit_tournament=<?= (int) $tournament['id'] ?>#crud-tournois">Modifier</a>

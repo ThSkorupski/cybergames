@@ -1,5 +1,6 @@
 <?php
-require_once __DIR__ . '/auth.php'; 
+require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/csrf.php'; 
 $page = basename($_SERVER['PHP_SELF']);
 
 ?>
@@ -39,7 +40,12 @@ $page = basename($_SERVER['PHP_SELF']);
                 <li class="user-name">
                     <?= htmlspecialchars($_SESSION['username'], ENT_QUOTES, 'UTF-8') ?>
                 </li>
-                <li><a href="logout.php">Se déconnecter</a></li>
+                <li>
+                    <form class="logout-form" method="post" action="logout.php">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
+                        <button type="submit">Se déconnecter</button>
+                    </form>
+                </li>
             <?php endif; ?>
         </ul>
     </nav>

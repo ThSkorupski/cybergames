@@ -1,5 +1,15 @@
 <?php
 
+# "a_venir" couvre aussi le tournoi en cours : c'est la date de début qui les distingue.
+function tournamentStatuses(): array
+{
+    return [
+        'a_venir' => 'À venir / en cours',
+        'termine' => 'Terminé',
+        'annule' => 'Annulé',
+    ];
+}
+
 #DateTime, :: accede a la classe, pour utiliser une fonction statique.
 function parseTournamentDate(string $value): ?string
 {
@@ -58,6 +68,9 @@ function validateTournamentInput(array $input): array
         || $registrationEndsAt <= $registrationStartsAt
     ) {
         return ['error' => 'Les dates sont invalides : la fin des inscriptions doit être après leur début.'];
+    }
+    if ($registrationEndsAt > $eventStartsAt) {
+        return ['error' => 'Les inscriptions doivent se terminer avant le début du tournoi.'];
     }
     if ($capacity === false) {
         return ['error' => 'La capacité doit être comprise entre 1 et 64 participants.'];

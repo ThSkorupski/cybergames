@@ -1,13 +1,18 @@
 <?php
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/csrf.php';
 requireAdmin();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     exit;
 }
+if (!isValidCsrfToken($_POST['csrf_token'] ?? '')) {
+    http_response_code(400);
+    exit('Jeton de sécurité invalide. Rechargez la page et réessayez.');
+}
 
-$id = (int) ($_POST['id'] ?? 0);
+$id = (int) inputString($_POST, 'id');
 
 if ($id === (int) $_SESSION['user_id']) {
     $status = 'error';
@@ -34,5 +39,4 @@ if ($id === (int) $_SESSION['user_id']) {
     $message = 'Utilisateur invalide.';
 }
 
-header('Location: ../../admin.php?status=' . $status . '&message=' . rawurlencode($message) . '#crud-users');
-exit;
+redirectWithMessage('../../admin.php#crud-users', $status, $message);
