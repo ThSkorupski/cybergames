@@ -1,16 +1,21 @@
 <?php
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/csrf.php';
 requireAdmin();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     exit;
 }
+if (!isValidCsrfToken($_POST['csrf_token'] ?? '')) {
+    http_response_code(400);
+    exit('Jeton de sécurité invalide. Rechargez la page et réessayez.');
+}
 
-$id         = (int) ($_POST['id'] ?? 0);
-$username   = trim($_POST['username'] ?? '');
-$email      = trim($_POST['email'] ?? '');
-$password   = $_POST['password'] ?? '';   // optionnel
+$id         = (int) inputString($_POST, 'id');
+$username   = trim(inputString($_POST, 'username'));
+$email      = trim(inputString($_POST, 'email'));
+$password   = inputString($_POST, 'password');   // optionnel
 $permission = (int) ($_POST['permission'] ?? 1);
 
 // un admin ne peut pas se retirer ses propres droits
@@ -73,8 +78,7 @@ if ($error === null) {
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
         $stmt->execute();
 
-        header('Location: ../../admin.php?status=success&message=' . rawurlencode('Utilisateur modifié.') . '#crud-users');
-        exit;
+        redirectWithMessage('../../admin.php#crud-users', 'success', 'Utilisateur modifié.');
     } catch (PDOException $e) {
         if ($e->getCode() === '23000') {
             $error = "Nom d'utilisateur ou email déjà utilisé.";
@@ -86,8 +90,7 @@ if ($error === null) {
 }
 
 if ($error !== null) {
-    header('Location: ../../admin.php?edit=' . $id . '&status=error&message=' . rawurlencode($error) . '#crud-users');
-    exit;
+    redirectWithMessage('../../admin.php?edit=' . $id . '#crud-users', 'error', $error);
 }
 
 header('Location: ../../admin.php#crud-users');

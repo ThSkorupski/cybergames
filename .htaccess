@@ -1,0 +1,8 @@
+Options -Indexes
+
+# Fichiers du projet qui ne doivent pas être servis par Apache
+RedirectMatch 404 (?i)/(\.git|InformationsEtAutre|database|docs)(/|$)
+RedirectMatch 404 (?i)/\.gitignore$
+RedirectMatch 404 (?i)/(CLAUDE|README)\.md$
+RedirectMatch 404 (?i)/config\.php$
+RedirectMatch 404 (?i)/includes/[^/]+\.php$

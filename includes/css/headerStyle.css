@@ -44,6 +44,28 @@ header nav ul li a:hover {
     text-decoration: none;
 }
 
+header nav ul li .logout-form {
+    margin: 0;
+}
+
+header nav ul li .logout-form button {
+    color: #e8eef2;
+    background: none;
+    border: 0;
+    font: inherit;
+    font-weight: bold;
+    font-size: 0.95rem;
+    display: block;
+    padding: 9px 13px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+header nav ul li .logout-form button:hover {
+    background: #24506b;
+}
+
 header nav ul li.user-name {
     color: #e8eef2;
     font-size: 0.95rem;

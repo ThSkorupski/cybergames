@@ -20,15 +20,19 @@ if (!isValidCsrfToken($_POST['csrf_token'] ?? '')) {
 
 $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 $validation = validateTournamentInput($_POST);
+$status = inputString($_POST, 'statut');
 if ($id === false) {
     $error = 'Tournoi invalide.';
 } elseif (isset($validation['error'])) {
     $error = $validation['error'];
+} elseif (!array_key_exists($status, tournamentStatuses())) {
+    $error = 'Le statut du tournoi est invalide.';
 } else {
     try {
         $pdo->beginTransaction();
         $data = $validation['data'];
         $data['id'] = $id;
+        $data['statut'] = $status;
         $lock = $pdo->prepare('SELECT id FROM tournois WHERE id = :id FOR UPDATE');
         $lock->execute([':id' => $id]);
         if ($lock->fetchColumn() === false) {
@@ -44,7 +48,8 @@ if ($id === false) {
                 'UPDATE tournois
                  SET nom = :nom, jeu = :jeu, description = :description, regles = :regles,
                      date_debut = :date_debut, capacite_max = :capacite_max,
-                     inscription_debut = :inscription_debut, inscription_fin = :inscription_fin
+                     inscription_debut = :inscription_debut, inscription_fin = :inscription_fin,
+                     statut = :statut
                  WHERE id = :id'
             );
             $stmt->execute($data);
@@ -71,9 +76,7 @@ if ($id === false) {
 }
 
 if (isset($error)) {
-    header('Location: ../../admin.php?status=error&message=' . rawurlencode($error) . '#crud-tournois');
-    exit;
+    redirectWithMessage('../../admin.php#crud-tournois', 'error', $error);
 }
 
-header('Location: ../../admin.php?status=success&message=' . rawurlencode('Tournoi modifié.') . '#crud-tournois');
-exit;
+redirectWithMessage('../../admin.php#crud-tournois', 'success', 'Tournoi modifié.');

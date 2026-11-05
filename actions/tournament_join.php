@@ -21,8 +21,7 @@ if (!isValidCsrfToken($_POST['csrf_token'] ?? '')) {
 #renvoie sur la page d'accueil si le tournoi est invalide
 $tournamentId = filter_var($_POST['tournament_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 if ($tournamentId === false) {
-    header('Location: ../index.php?status=error&message=' . rawurlencode('Tournoi invalide.'));
-    exit;
+    redirectWithMessage('../index.php', 'error', 'Tournoi invalide.');
 }
 
 try {
@@ -31,6 +30,7 @@ try {
         'SELECT id, regles, capacite_max,
                 inscription_debut <= CURRENT_TIMESTAMP AS registration_started,
                 inscription_fin > CURRENT_TIMESTAMP AS registration_open,
+                date_debut > CURRENT_TIMESTAMP AS not_started,
                 statut
          FROM tournois WHERE id = :id FOR UPDATE'
     );
@@ -39,6 +39,9 @@ try {
 
     if ($tournament === false) {
         throw new DomainException('Tournoi introuvable.');
+    }
+    if ((int) $tournament['not_started'] !== 1) {
+        throw new DomainException('Ce tournoi a déjà commencé.');
     }
     if ((int) $tournament['registration_started'] !== 1) {
         throw new DomainException('Les inscriptions à ce tournoi ne sont pas encore ouvertes.');
@@ -68,20 +71,17 @@ try {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    header('Location: ../index.php?status=error&message=' . rawurlencode($exception->getMessage()));
-    exit;
+    redirectWithMessage('../index.php', 'error', $exception->getMessage());
 } catch (PDOException $exception) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
     if (($exception->errorInfo[1] ?? null) === 1062) {
-        header('Location: ../index.php?status=error&message=' . rawurlencode('Vous êtes déjà inscrit à ce tournoi.'));
-        exit;
+        redirectWithMessage('../index.php', 'error', 'Vous êtes déjà inscrit à ce tournoi.');
     }
     error_log($exception->getMessage());
     http_response_code(500);
     exit('Une erreur est survenue lors de l’inscription au tournoi.');
 }
 
-header('Location: ../index.php?status=success&message=' . rawurlencode('Inscription au tournoi confirmée.'));
-exit;
+redirectWithMessage('../index.php', 'success', 'Inscription au tournoi confirmée.');

@@ -1,6 +1,5 @@
 <?php
-session_start();
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/includes/auth.php';
 
 $pageTitle = "Dashboard - CyberGames";
 
@@ -14,7 +13,7 @@ $stmt->execute([':id' => $_SESSION['user_id']]);
 $user = $stmt->fetch();
 
 if ($user === false) {
-    header('Location: logout.php');
+    header('Location: login.php');
     exit;
 }
 

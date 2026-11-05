@@ -1,6 +1,7 @@
 <?php
-session_start();
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/csrf.php';
+require_once __DIR__ . '/includes/login_throttle.php';
 
 #$pageTitle modifie le title dans le header
 $pageTitle = "Login - CyberGames";
@@ -12,21 +13,33 @@ if (isset($_SESSION['user_id'])) {
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $email = trim($_POST["email"] ?? "");
-    $password = $_POST["password"] ?? "";
+    $email = trim(inputString($_POST, "email"));
+    $password = inputString($_POST, "password");
+    $retrySeconds = loginRetrySeconds($email);
 
-    $sql = "SELECT * FROM users WHERE email = :email LIMIT 1";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([":email" => $email]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($user && password_verify($password, $user["password"])) {
-        $_SESSION["user_id"] = $user["id"];
-        $_SESSION["username"] = $user["username"];
-        $_SESSION["permission"] = (int) ($user["permission"] ?? 0);
-        header("Location: dashboard.php");
-        exit;
+    if (!isValidCsrfToken($_POST["csrf_token"] ?? "")) {
+        $error = "Jeton de sécurité invalide. Rechargez la page et réessayez.";
+    } elseif ($retrySeconds > 0) {
+        $error = "Trop de tentatives. Réessayez dans " . (int) ceil($retrySeconds / 60) . " minute(s).";
     } else {
+        $sql = "SELECT * FROM users WHERE email = :email LIMIT 1";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([":email" => $email]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($user && password_verify($password, $user["password"])) {
+            clearLoginFailures($email);
+            # Nouvel identifiant de session et nouveau jeton CSRF à la connexion
+            session_regenerate_id(true);
+            unset($_SESSION["csrf_token"]);
+            $_SESSION["user_id"] = $user["id"];
+            $_SESSION["username"] = $user["username"];
+            $_SESSION["permission"] = (int) ($user["permission"] ?? 0);
+            header("Location: dashboard.php");
+            exit;
+        }
+
+        recordLoginFailure($email);
         $error = "Email ou mot de passe incorrect.";
     }
 }
@@ -51,6 +64,7 @@ include 'includes/header.php';
 <?php endif; ?>
 
 <form class="auth-form" method="POST">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
     <input type="email" name="email" placeholder="Email" required>
     <input type="password" name="password" placeholder="Mot de passe" required>
     <button type="submit">Connexion</button>

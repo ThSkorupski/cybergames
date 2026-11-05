@@ -20,8 +20,7 @@ if (!isValidCsrfToken($_POST['csrf_token'] ?? '')) {
 
 $validation = validateTournamentInput($_POST);
 if (isset($validation['error'])) {
-    header('Location: ../../admin.php?status=error&message=' . rawurlencode($validation['error']) . '#crud-tournois');
-    exit;
+    redirectWithMessage('../../admin.php#crud-tournois', 'error', $validation['error']);
 }
 
 $data = $validation['data'];
@@ -37,9 +36,7 @@ try {
     $stmt->execute($data);
 } catch (PDOException $exception) {
     error_log($exception->getMessage());
-    header('Location: ../../admin.php?status=error&message=' . rawurlencode('Erreur lors de la création du tournoi.') . '#crud-tournois');
-    exit;
+    redirectWithMessage('../../admin.php#crud-tournois', 'error', 'Erreur lors de la création du tournoi.');
 }
 
-header('Location: ../../admin.php?status=success&message=' . rawurlencode('Tournoi créé.') . '#crud-tournois');
-exit;
+redirectWithMessage('../../admin.php#crud-tournois', 'success', 'Tournoi créé.');
